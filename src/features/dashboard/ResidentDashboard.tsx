@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { IssueDetailsDialog } from "@/components/IssueDetailsDialog";
-import { Loader2 } from "lucide-react";
+import { Loader2, Megaphone } from "lucide-react";
 
 type Tab = "Society Feed" | "My Issues" | "Report" | "Profile";
 
@@ -61,7 +61,7 @@ export function ResidentDashboard({ issues }: { issues: any[] }) {
 
                 <main className="mx-auto w-full max-w-5xl px-4 pt-6 sm:px-6 lg:px-10 lg:pt-10 flex-1">
                     {activeTab === "Society Feed" && (
-                        <SocietyFeedView issues={issues} onSelect={(issue) => setSelectedIssue(issue)} user={user} />
+                        <SocietyFeedView issues={issues} onSelect={(issue) => setSelectedIssue(issue)} user={user} profile={profile} />
                     )}
                     {activeTab === "My Issues" && (
                         <MyIssuesView issues={issues} onSelect={(issue) => setSelectedIssue(issue)} user={user} />
@@ -157,11 +157,23 @@ function ResidentIssueCard({ issue, user, onSelect }: { issue: any, user: any, o
 // ---------------------------------------------------------
 // 1. SOCIETY FEED VIEW (Lovable Filters Format)
 // ---------------------------------------------------------
-function SocietyFeedView({ issues, onSelect, user }: { issues: any[], onSelect: (issue: any) => void, user: any }) {
+function SocietyFeedView({ issues, onSelect, user, profile }: { issues: any[], onSelect: (issue: any) => void, user: any, profile: any }) {
     const [statusFilter, setStatusFilter] = useState("All");
     const [categoryFilter, setCategoryFilter] = useState("All");
     const [search, setSearch] = useState("");
     const [sortByVotes, setSortByVotes] = useState(false);
+    const [notices, setNotices] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (!profile?.society_id) return;
+        const fetchNotices = async () => {
+            const { data } = await (supabase as any).from("notices").select("*").eq("society_id", profile.society_id).order("created_at", { ascending: false });
+            if (data) setNotices(data);
+        };
+        fetchNotices();
+        const ch = supabase.channel('notices-sync-res').on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, fetchNotices).subscribe();
+        return () => { supabase.removeChannel(ch); };
+    }, [profile]);
 
     const filteredIssues = useMemo(() => {
         if (!issues) return [];
@@ -200,6 +212,30 @@ function SocietyFeedView({ issues, onSelect, user }: { issues: any[], onSelect: 
                     </button>
                 </div>
             </section>
+
+            {notices.length > 0 && (
+                <section className="mb-10 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Megaphone className="size-4 text-amber-500" />
+                        <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-500">Official Broadcasts</p>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                        {notices.map((n, i) => (
+                            <div key={i} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 shadow-sm">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                    <h4 className="font-bold text-amber-500 text-lg md:text-xl">{n.title}</h4>
+                                    <span className="text-[10px] font-mono tracking-widest text-muted-foreground opacity-80">{new Date(n.created_at).toLocaleString()}</span>
+                                </div>
+                                <p className="mt-2 text-sm leading-relaxed text-ink/90 whitespace-pre-wrap">{n.content}</p>
+                                <div className="mt-4 flex items-center gap-2">
+                                    <span className="h-5 w-5 rounded-full bg-amber-500/20 text-amber-600 flex items-center justify-center font-bold text-[8px]">{n.author.charAt(0)}</span>
+                                    <span className="text-[10px] font-bold font-mono uppercase text-muted-foreground tracking-widest">{n.author}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             <section className="mb-8 grid gap-4 rounded-2xl border border-card/40 bg-card/20 p-4 ring-1 ring-black/5 backdrop-blur-md sm:grid-cols-[1fr_180px_180px]">
                 <label className="block">

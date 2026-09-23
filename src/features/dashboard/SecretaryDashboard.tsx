@@ -9,9 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Copy, LogOut, Download } from "lucide-react";
+import { Copy, LogOut, Download, Megaphone } from "lucide-react";
 
-type View = "Overview" | "All Issues" | "Residents" | "Settings";
+type View = "Overview" | "All Issues" | "Residents" | "Broadcasts" | "Settings";
 type Sort = "updated" | "upvotes" | "reported";
 
 const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -29,11 +29,10 @@ function StatusBadge({ status }: { status: IssueStatus }) {
 function AppNav({ active, onChange, mobile = false }: { active: View; onChange: (view: View) => void; mobile?: boolean }) {
   return (
     <nav className="space-y-1" aria-label="Secretary navigation">
-      {(["Overview", "All Issues", "Residents", "Settings"] as View[]).map((item) => (
+      {(["Overview", "All Issues", "Residents", "Broadcasts", "Settings"] as View[]).map((item) => (
         <Button key={item} type="button" variant="ghost" onClick={() => onChange(item)} className={`h-11 w-full justify-start rounded-sm px-3 text-sm ${active === item ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground" : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
           <span className={`mr-3 h-1.5 w-1.5 rounded-full transition-colors ${active === item ? "bg-accent" : "bg-border"}`} />
           {item}
-          {mobile && (item === "Residents" || item === "Settings") ? <span className="ml-auto text-[10px] font-medium uppercase text-muted-foreground">Soon</span> : null}
         </Button>
       ))}
     </nav>
@@ -276,6 +275,76 @@ function SettingsView({ society, onUpdate }: { society: any, onUpdate: (s: any) 
   );
 }
 
+// -------------------------------------------------------------
+// BROADCAST / NOTICES VIEW
+// -------------------------------------------------------------
+function BroadcastsView({ society, profile }: { society: any, profile: any }) {
+  const [notices, setNotices] = useState<any[]>([]);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const fetchNotices = async () => {
+      if (!society) return;
+      const { data } = await (supabase as any).from("notices").select("*").eq("society_id", society.id).order("created_at", { ascending: false });
+      if (data) setNotices(data);
+    };
+    fetchNotices();
+    const ch = supabase.channel('notices-sync-sec').on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, fetchNotices).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [society]);
+
+  const postNotice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !content.trim()) return;
+    setBusy(true);
+    const { error } = await (supabase as any).from("notices").insert({
+      society_id: society.id,
+      title,
+      content,
+      author: profile?.name || 'Secretary'
+    });
+    setBusy(false);
+    if (error) { toast.error("Failed to post broadcast"); }
+    else { toast.success("Broadcast instantly visible to all residents"); setTitle(""); setContent(""); }
+  };
+
+  return (
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in max-w-4xl">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <h3 className="font-display text-2xl font-bold">New Society Broadcast</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Post critical updates, maintenance times, and important alerts straight to resident feeds.</p>
+        <form onSubmit={postNotice} className="mt-6 flex flex-col gap-4">
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Alert Headline (e.g. Water Cutoff Tomorrow)" className="w-full rounded-xl border border-input bg-background/50 px-4 py-3 text-sm focus:ring-2 focus:ring-accent/50 outline-none" required />
+          <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Elaborate on times, restrictions, or instructions..." rows={4} className="w-full rounded-xl border border-input bg-background/50 px-4 py-3 text-sm focus:ring-2 focus:ring-accent/50 outline-none resize-none" required />
+          <Button type="submit" disabled={busy} className="bg-accent text-background hover:bg-accent/90 self-start px-8 rounded-xl font-bold py-3 min-h-12 flex items-center gap-2">
+            <Megaphone className="size-4" /> Publish Broadcast
+          </Button>
+        </form>
+      </div>
+
+      <div className="space-y-4">
+        <h4 className="font-bold text-sm text-ink uppercase tracking-widest opacity-80 pt-4">Broadcast History</h4>
+        {notices.length === 0 && <p className="text-sm text-muted-foreground italic">No past broadcasts found.</p>}
+        {notices.map((n, i) => (
+          <div key={i} className="rounded-xl border border-border bg-background p-5 hover:border-accent/30 transition-colors shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+              <h5 className="font-bold text-[1.1rem] text-ink">{n.title}</h5>
+              <span className="text-[10px] font-mono tracking-widest text-muted-foreground opacity-80 mt-1 flex-shrink-0 sm:mt-0">{new Date(n.created_at).toLocaleString()}</span>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground/90 whitespace-pre-wrap">{n.content}</p>
+            <div className="mt-4 flex items-center gap-2">
+              <span className="h-5 w-5 rounded-full bg-accent/20 text-accent flex items-center justify-center font-bold text-[8px]">{n.author.charAt(0)}</span>
+              <span className="text-xs font-bold font-mono uppercase text-muted-foreground tracking-widest">{n.author}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SecretaryDashboard() {
   const { user, profile } = useAuth();
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -481,7 +550,7 @@ export function SecretaryDashboard() {
                 )}
               </div>
             </div>
-            {active === "Residents" ? <ResidentsView /> : active === "Settings" ? <SettingsView society={society} onUpdate={setSociety} /> : loading ? <div className="space-y-5"><div className="grid gap-px sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-36 rounded-xl" />)}</div><Skeleton className="h-40 rounded-xl mt-8" /><Skeleton className="h-96 rounded-xl mt-8" /></div> : <><Summary issues={issues} /><section className="mt-12" aria-labelledby="issues-title"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4"><div className="min-w-0"><p className="dashboard-kicker">Issue register</p><h2 id="issues-title" className="mt-2 font-display text-3xl text-ink">{active === "Overview" ? "Recent and active issues" : "All society issues"}</h2></div><p className="text-xs text-muted-foreground">{filtered.length} shown</p></div><Filters query={query} setQuery={setQuery} status={status} setStatus={setStatus} category={category} setCategory={setCategory} sort={sort} setSort={setSort} /><div className="issue-order-transition"><IssueList issues={active === "Overview" ? filtered.slice(0, 12) : filtered} sort={sort} setSort={setSort} onSelect={(issue) => setSelectedId(issue.id)} /></div></section></>}
+            {active === "Residents" ? <ResidentsView /> : active === "Broadcasts" ? <BroadcastsView society={society} profile={profile} /> : active === "Settings" ? <SettingsView society={society} onUpdate={setSociety} /> : loading ? <div className="space-y-5"><div className="grid gap-px sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-36 rounded-xl" />)}</div><Skeleton className="h-40 rounded-xl mt-8" /><Skeleton className="h-96 rounded-xl mt-8" /></div> : <><Summary issues={issues} /><section className="mt-12" aria-labelledby="issues-title"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4"><div className="min-w-0"><p className="dashboard-kicker">Issue register</p><h2 id="issues-title" className="mt-2 font-display text-3xl text-ink">{active === "Overview" ? "Recent and active issues" : "All society issues"}</h2></div><p className="text-xs text-muted-foreground">{filtered.length} shown</p></div><Filters query={query} setQuery={setQuery} status={status} setStatus={setStatus} category={category} setCategory={setCategory} sort={sort} setSort={setSort} /><div className="issue-order-transition"><IssueList issues={active === "Overview" ? filtered.slice(0, 12) : filtered} sort={sort} setSort={setSort} onSelect={(issue) => setSelectedId(issue.id)} /></div></section></>}
           </div>
         </main>
       </div>
