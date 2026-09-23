@@ -172,10 +172,19 @@ function ResidentsView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (supabase as any).rpc('get_society_residents').then(({ data, error }: any) => {
-      if (data) setResidents(data);
-      setLoading(false);
-    });
+    const fetchResidents = () => {
+      (supabase as any).rpc('get_society_residents').then(({ data, error }: any) => {
+        if (data) setResidents(data);
+        setLoading(false);
+      });
+    };
+    fetchResidents();
+
+    const channel = supabase.channel('residents-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchResidents)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   if (loading) return <div className="space-y-5"><Skeleton className="h-64 rounded-xl" /></div>;
@@ -285,7 +294,6 @@ export function SecretaryDashboard() {
       (supabase as any).from("societies").select("*").eq("id", (profile as any).society_id).single().then(({ data }: any) => setSociety(data));
     }
 
-    // Fetch REAL Issues
     const fetchIssues = async () => {
       try {
         const { data, error } = await (supabase as any)
@@ -323,6 +331,15 @@ export function SecretaryDashboard() {
     };
 
     fetchIssues();
+
+    // Enable massive real-time network subscriptions for Secretary Data
+    const channel = supabase.channel('secretary-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'issues' }, fetchIssues)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'issue_upvotes' }, fetchIssues)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'issue_notes' }, fetchIssues)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [profile]);
 
   const selected = issues.find((item) => item.id === selectedId) ?? null;

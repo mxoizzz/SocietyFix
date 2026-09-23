@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,6 +55,16 @@ export function IssueDetailsDialog({ issue, open, onOpenChange }: IssueDetailsDi
         },
         enabled: !!issue,
     });
+
+    useEffect(() => {
+        if (!issue) return;
+        const channel = supabase.channel(`notes-${issue.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'issue_notes', filter: `issue_id=eq.${issue.id}` }, () => {
+                queryClient.invalidateQueries({ queryKey: ["issue_notes", issue.id] });
+            })
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [issue, queryClient]);
 
     const updateMutation = useMutation({
         mutationFn: async () => {

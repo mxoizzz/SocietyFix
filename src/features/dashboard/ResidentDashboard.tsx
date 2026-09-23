@@ -139,7 +139,7 @@ function ResidentIssueCard({ issue, user, onSelect }: { issue: any, user: any, o
                     } else {
                         await (supabase as any).from("issue_upvotes").insert({ issue_id: issue.id, user_id: user?.id });
                     }
-                    window.location.reload(); // Optimistic refresh for Resident
+                    // Real-time invalidation handles the UI refresh automatically now.
                 }}
                 className={`shrink-0 transition-all flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm w-full sm:w-auto justify-center sm:justify-start ${hasUpvoted ? "bg-accent/15 text-accent border border-accent/20" : "bg-card border border-border text-muted-foreground hover:bg-muted"}`}
             >
@@ -316,10 +316,8 @@ function ReportView({ user, profile, onComplete }: { user: any, profile: any, on
                 });
             if (error) throw error;
             toast.success("Successfully Reported!");
-            // Force a fast state reset and refresh to fetch new issues
-            setTimeout(() => {
-                window.location.reload();
-            }, 600);
+            // Switch tabs gracefully; the websocket listener immediately populates the feed
+            onComplete();
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Could not submit issue");
             setBusy(false);

@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { SecretaryDashboard } from "@/features/dashboard/SecretaryDashboard";
 import { ResidentDashboard } from "@/features/dashboard/ResidentDashboard";
 
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_authenticated/issues")({
 
 function IssuesDashboard() {
     const { user, role, loading: authLoading } = useAuth();
+    const queryClient = useQueryClient();
 
     // Only fetch for residents. Secretaries fetch in their own dashboard component.
     const { data: issues, isLoading } = useQuery({
@@ -26,6 +28,20 @@ function IssuesDashboard() {
         },
         enabled: !!user && role === "resident",
     });
+
+    useEffect(() => {
+        if (!user || role !== "resident") return;
+        const channel = supabase.channel('resident-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'issues' }, () => {
+                queryClient.invalidateQueries({ queryKey: ["issues", "resident", user.id] });
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'issue_upvotes' }, () => {
+                queryClient.invalidateQueries({ queryKey: ["issues", "resident", user.id] });
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [user, role, queryClient]);
 
     if (authLoading) {
         return (
