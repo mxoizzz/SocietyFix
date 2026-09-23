@@ -71,7 +71,7 @@ function Index() {
       <main>
         <section id="top" className="relative flex min-h-[92vh] items-center border-b border-border pt-28">
           <div className="site-container grid w-full items-center gap-16 py-16 lg:grid-cols-[1.08fr_.92fr] lg:py-24">
-            <div className="max-w-3xl ml-4 sm:ml-8 md:ml-12 lg:ml-16">
+            <div className="max-w-3xl">
               <p className="hero-reveal hero-delay-1 mb-8 text-xs font-semibold uppercase tracking-[0.18em] text-accent">For better-run residential societies</p>
               <h1 className="hero-reveal hero-delay-2 font-display text-[clamp(3.4rem,7vw,7.25rem)] leading-[.9] tracking-normal">
                 Every issue,<br /><span className="text-accent">out in the open.</span>
