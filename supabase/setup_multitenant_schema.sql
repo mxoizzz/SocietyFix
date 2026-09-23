@@ -62,11 +62,8 @@ RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
 $$;
 
 -- Profile & Role Policies
-CREATE POLICY "profiles_select_own_or_same_society" ON public.profiles FOR SELECT TO authenticated
-  USING (
-    id = auth.uid() OR 
-    society_id = (SELECT society_id FROM public.profiles WHERE id = auth.uid())
-  );
+CREATE POLICY "profiles_select_own" ON public.profiles FOR SELECT TO authenticated
+  USING (id = auth.uid());
 CREATE POLICY "profiles_insert_own" ON public.profiles FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
 CREATE POLICY "profiles_update_own" ON public.profiles FOR UPDATE TO authenticated USING (id = auth.uid());
 CREATE POLICY "roles_select_own" ON public.user_roles FOR SELECT TO authenticated USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'secretary'));
@@ -168,3 +165,54 @@ CREATE TRIGGER issues_status_update BEFORE UPDATE ON public.issues FOR EACH ROW 
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.issues;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.issue_upvotes;
+
+-- Auth Registration Hooks (Maps raw_user_meta_data to Profiles and Roles)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, flat_number, society_id)
+  VALUES (
+    new.id,
+    COALESCE(new.raw_user_meta_data->>'name', ''),
+    COALESCE(new.raw_user_meta_data->>'flat_number', ''),
+    (new.raw_user_meta_data->>'society_id')::uuid
+  );
+
+  INSERT INTO public.user_roles (user_id, role)
+  VALUES (
+    new.id,
+    (new.raw_user_meta_data->>'role')::public.app_role
+  );
+  
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Securely fetch residents for the calling Secretary's society
+CREATE OR REPLACE FUNCTION public.get_society_residents()
+RETURNS TABLE (
+  id UUID,
+  name TEXT,
+  flat_number TEXT,
+  joined_at TIMESTAMPTZ
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT p.id, p.name, p.flat_number, p.created_at as joined_at
+  FROM public.profiles p
+  JOIN public.user_roles u ON u.user_id = p.id
+  WHERE p.society_id = (SELECT society_id FROM public.profiles WHERE id = auth.uid())
+  AND u.role = 'resident'
+  ORDER BY p.created_at DESC;
+$$;
