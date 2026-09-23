@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Copy, LogOut } from "lucide-react";
+import { Copy, LogOut, Download } from "lucide-react";
 
 type View = "Overview" | "All Issues" | "Residents" | "Settings";
 type Sort = "updated" | "upvotes" | "reported";
@@ -352,6 +352,30 @@ export function SecretaryDashboard() {
 
   const changeView = (view: View) => { setActive(view); setMenuOpen(false); };
 
+  const downloadCSV = () => {
+    const headers = ["Issue ID", "Category", "Title", "Location", "Reporter", "Status", "Upvotes", "Reported At", "Updated At", "Description"];
+    const rows = filtered.map(issue => [
+      `SF-${issue.id.slice(0, 6).toUpperCase()}`,
+      issue.category,
+      `"${issue.title.replace(/"/g, '""')}"`,
+      `"${issue.location.replace(/"/g, '""')}"`,
+      `"${issue.reporter.replace(/"/g, '""')}"`,
+      issue.status,
+      issue.upvotes,
+      new Date(issue.reportedAt).toLocaleString(),
+      new Date(issue.updatedAt).toLocaleString(),
+      `"${issue.description.replace(/"/g, '""')}"`
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `SocietyFix_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
   const saveIssue = async (id: string, nextStatus: IssueStatus, note: string) => {
     // 1. Update Supabase
     const dbStatus = nextStatus === "In Progress" ? "in_progress" : nextStatus === "Resolved" ? "resolved" : "reported";
@@ -432,7 +456,21 @@ export function SecretaryDashboard() {
 
         <main className="px-4 py-8 sm:px-7 sm:py-8 lg:px-10 xl:px-12">
           <div className="mx-auto max-w-[92rem]">
-            <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4"><div className="min-w-0"><p className="dashboard-kicker">Secretary console</p><h1 className="mt-2 truncate font-display text-4xl sm:text-5xl text-ink">{active}</h1></div>{active === "Overview" || active === "All Issues" ? <p className="hidden text-sm font-medium text-muted-foreground sm:block">{issues.filter((issue) => issue.status !== "Resolved").length} active cases</p> : null}</div>
+            <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+              <div className="min-w-0">
+                <p className="dashboard-kicker">Secretary console</p>
+                <h1 className="mt-2 truncate font-display text-4xl sm:text-5xl text-ink">{active}</h1>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                {active === "Overview" || active === "All Issues" ? <p className="hidden text-sm font-medium text-muted-foreground sm:block">{issues.filter((issue) => issue.status !== "Resolved").length} active cases</p> : null}
+                {(active === "Overview" || active === "All Issues") && (
+                  <Button onClick={downloadCSV} variant="outline" size="sm" className="hidden sm:flex text-xs font-semibold gap-1.5 h-8 border-border">
+                    <Download className="size-3.5" />
+                    Export CSV
+                  </Button>
+                )}
+              </div>
+            </div>
             {active === "Residents" ? <ResidentsView /> : active === "Settings" ? <SettingsView society={society} onUpdate={setSociety} /> : loading ? <div className="space-y-5"><div className="grid gap-px sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-36 rounded-xl" />)}</div><Skeleton className="h-40 rounded-xl mt-8" /><Skeleton className="h-96 rounded-xl mt-8" /></div> : <><Summary issues={issues} /><section className="mt-12" aria-labelledby="issues-title"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4"><div className="min-w-0"><p className="dashboard-kicker">Issue register</p><h2 id="issues-title" className="mt-2 font-display text-3xl text-ink">{active === "Overview" ? "Recent and active issues" : "All society issues"}</h2></div><p className="text-xs text-muted-foreground">{filtered.length} shown</p></div><Filters query={query} setQuery={setQuery} status={status} setStatus={setStatus} category={category} setCategory={setCategory} sort={sort} setSort={setSort} /><div className="issue-order-transition"><IssueList issues={active === "Overview" ? filtered.slice(0, 12) : filtered} sort={sort} setSort={setSort} onSelect={(issue) => setSelectedId(issue.id)} /></div></section></>}
           </div>
         </main>
