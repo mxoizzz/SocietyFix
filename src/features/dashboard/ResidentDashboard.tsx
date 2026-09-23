@@ -124,6 +124,11 @@ function ResidentIssueCard({ issue, user, onSelect }: { issue: any, user: any, o
                 </div>
                 <h2 className="mt-4 font-display text-xl md:text-2xl font-bold leading-snug text-ink">{issue.title}</h2>
                 <p className="mt-2.5 line-clamp-2 text-sm leading-6 text-muted-foreground">{issue.description}</p>
+                {issue.photo_url && (
+                    <div className="mt-3 overflow-hidden rounded-xl border border-card/40 max-h-48 sm:max-w-sm">
+                        <img src={issue.photo_url} alt="Evidence" className="h-full w-full object-cover" />
+                    </div>
+                )}
                 <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-80">
                     <span>Flat {issue.flat_number}</span>
                     <span>{new Date(issue.created_at).toLocaleDateString()}</span>
@@ -294,6 +299,7 @@ function ReportView({ user, profile, onComplete }: { user: any, profile: any, on
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [flat, setFlat] = useState(profile?.flat_number || "");
+    const [photo, setPhoto] = useState<File | null>(null);
     const [busy, setBusy] = useState(false);
 
     const canSubmit = title.trim().length > 3 && description.trim().length > 8 && flat.trim().length > 1;
@@ -303,6 +309,15 @@ function ReportView({ user, profile, onComplete }: { user: any, profile: any, on
         if (!user || !canSubmit) return;
         setBusy(true);
         try {
+            let photoUrl = null;
+            if (photo) {
+                const fileExt = photo.name.split('.').pop();
+                const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('issue_evidence').upload(fileName, photo);
+                if (uploadError) throw new Error("Failed to upload photo evidence.");
+                photoUrl = supabase.storage.from('issue_evidence').getPublicUrl(fileName).data.publicUrl;
+            }
+
             const { error } = await (supabase as any)
                 .from("issues")
                 .insert({
@@ -313,6 +328,7 @@ function ReportView({ user, profile, onComplete }: { user: any, profile: any, on
                     category,
                     title,
                     description,
+                    photo_url: photoUrl,
                 });
             if (error) throw error;
             toast.success("Successfully Reported!");
@@ -354,6 +370,15 @@ function ReportView({ user, profile, onComplete }: { user: any, profile: any, on
                     <label className="sm:col-span-2 block">
                         <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Extensive Description</span>
                         <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What failed, where is it located, and when did it start?" rows={5} className="w-full resize-none rounded-xl border border-card/70 bg-background/80 px-4 py-4 text-sm outline-none transition focus:ring-2 focus:ring-accent/50 text-ink" />
+                    </label>
+                    <label className="sm:col-span-2 block">
+                        <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Photo Evidence (Optional)</span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+                            className="h-12 w-full pt-2 rounded-xl border border-card/70 bg-background/80 px-4 text-sm outline-none transition focus:ring-2 focus:ring-accent/50 text-ink file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:uppercase file:tracking-wider file:bg-accent/10 file:text-accent hover:file:bg-accent/20 cursor-pointer"
+                        />
                     </label>
                 </div>
                 <button type="submit" disabled={!canSubmit || busy} className="mt-8 flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-accent px-10 py-4 text-sm font-bold text-background shadow-lg shadow-accent/20 transition-all hover:bg-accent/90 hover:-translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none">

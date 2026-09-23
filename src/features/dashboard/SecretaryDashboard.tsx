@@ -155,7 +155,16 @@ function IssueDetail({ issue, open, onOpenChange, onSave }: { issue: Issue | nul
           <SheetDescription className="mt-2 text-sm">{issue.location} · Reported {formatDate(issue.reportedAt)}</SheetDescription>
         </SheetHeader>
         <div className="space-y-8 px-5 py-7 sm:px-8 bg-background">
-          <section><p className="dashboard-kicker">Issue details</p><p className="mt-3 text-sm leading-7 text-ink/80">{issue.description}</p><dl className="mt-5 grid grid-cols-2 gap-y-5 border-y border-border py-5 text-sm"><div><dt className="text-xs text-muted-foreground">Reporter</dt><dd className="mt-1 flex items-center gap-2"><span className="h-6 w-6 rounded-full bg-accent/10 text-accent flex items-center justify-center font-semibold text-[10px]">{issue.reporter.charAt(0)}</span><span className="font-semibold text-ink">{issue.reporter}</span></dd></div><div><dt className="text-xs text-muted-foreground">Upvotes</dt><dd className="mt-1 font-display text-2xl text-ink">{issue.upvotes}</dd></div></dl></section>
+          <section>
+            <p className="dashboard-kicker">Issue details</p>
+            <p className="mt-3 text-sm leading-7 text-ink/80">{issue.description}</p>
+            {issue.photo_url && (
+              <div className="mt-5 rounded-lg overflow-hidden border border-border">
+                <img src={issue.photo_url} alt="Evidence" className="w-full max-h-80 object-cover" />
+              </div>
+            )}
+            <dl className="mt-5 grid grid-cols-2 gap-y-5 border-y border-border py-5 text-sm"><div><dt className="text-xs text-muted-foreground">Reporter</dt><dd className="mt-1 flex items-center gap-2"><span className="h-6 w-6 rounded-full bg-accent/10 text-accent flex items-center justify-center font-semibold text-[10px]">{issue.reporter.charAt(0)}</span><span className="font-semibold text-ink">{issue.reporter}</span></dd></div><div><dt className="text-xs text-muted-foreground">Upvotes</dt><dd className="mt-1 font-display text-2xl text-ink">{issue.upvotes}</dd></div></dl>
+          </section>
 
           <section className="bg-card border border-border rounded-xl p-5 shadow-sm"><p className="dashboard-kicker">Update issue</p><label htmlFor="detail-status" className="mt-4 block text-xs font-semibold text-ink">Status</label><select id="detail-status" value={status} onChange={(event) => setStatus(event.target.value as IssueStatus)} className="dashboard-select mt-2 bg-background border-border text-ink w-full px-3 py-2.5 rounded-lg">{statuses.map((item) => <option key={item} value={item}>{item}</option>)}</select><label htmlFor="detail-note" className="mt-5 block text-xs font-semibold text-ink">Add a note</label><Textarea id="detail-note" value={note} maxLength={500} onChange={(event) => setNote(event.target.value)} placeholder="Share a concise update with residents..." className="mt-2 min-h-28 bg-background text-ink placeholder:text-muted-foreground w-full rounded-lg" /><div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4"><p role="status" className={`min-w-0 text-xs font-semibold text-accent transition-opacity ${saved ? "opacity-100" : "opacity-0"}`}>Update saved successfully.</p><Button type="button" onClick={submit} className="rounded-lg bg-accent text-background hover:bg-accent/90 px-6 py-2">Save & Notify</Button></div></section>
 
@@ -317,6 +326,7 @@ export function SecretaryDashboard() {
             status: d.status === "in_progress" ? "In Progress" : d.status === "resolved" ? "Resolved" : "Reported",
             reportedAt: d.created_at,
             updatedAt: d.updated_at,
+            photo_url: d.photo_url,
             upvotes: d.issue_upvotes?.length || 0,
             timeline: (d.issue_status_events || []).map((e: any) => ({ label: e.status, at: e.created_at })),
             notes: (d.issue_notes || []).map((n: any) => ({ id: n.id, author: n.author, text: n.text, at: n.created_at }))

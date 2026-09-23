@@ -24,6 +24,7 @@ export type Issue = {
   status: IssueStatus;
   reportedAt: string;
   updatedAt: string;
+  photo_url?: string;
   timeline: TimelineEvent[];
   notes: IssueNote[];
 };
