@@ -4,6 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Loader2, Plus } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { IssueDetailsDialog } from "@/components/IssueDetailsDialog";
+import { Database } from "@/integrations/supabase/types";
+
+type Issue = Database["public"]["Tables"]["issues"]["Row"];
 
 export const Route = createFileRoute("/_authenticated/issues")({
     component: IssuesDashboard,
@@ -11,6 +16,8 @@ export const Route = createFileRoute("/_authenticated/issues")({
 
 function IssuesDashboard() {
     const { user, role, loading: authLoading } = useAuth();
+    const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const { data: issues, isLoading } = useQuery({
         queryKey: ["issues", role, user?.id],
@@ -26,7 +33,7 @@ function IssuesDashboard() {
                 const { data, error } = await supabase
                     .from("issues")
                     .select("*")
-                    .eq("reported_by", user?.id)
+                    .eq("reported_by", user?.id || "")
                     .order("created_at", { ascending: false });
                 if (error) throw error;
                 return data;
@@ -90,7 +97,11 @@ function IssuesDashboard() {
                             {issues.map((issue) => (
                                 <div
                                     key={issue.id}
-                                    className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-card/70 bg-card/65 p-5 ring-1 ring-black/5 backdrop-blur-2xl transition-all hover:shadow-xl hover:shadow-brand/5"
+                                    onClick={() => {
+                                        setSelectedIssue(issue);
+                                        setIsDialogOpen(true);
+                                    }}
+                                    className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-card/70 bg-card/65 p-5 ring-1 ring-black/5 backdrop-blur-2xl transition-all hover:shadow-xl hover:shadow-brand/5 cursor-pointer"
                                 >
                                     <div>
                                         <div className="flex items-start justify-between gap-4">
@@ -99,10 +110,10 @@ function IssuesDashboard() {
                                             </span>
                                             <span
                                                 className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium capitalize ring-1 ring-inset ${issue.status === "resolved"
-                                                        ? "bg-green-500/10 text-green-600 ring-green-500/20"
-                                                        : issue.status === "in_progress"
-                                                            ? "bg-amber-500/10 text-amber-600 ring-amber-500/20"
-                                                            : "bg-blue-500/10 text-blue-600 ring-blue-500/20"
+                                                    ? "bg-green-500/10 text-green-600 ring-green-500/20"
+                                                    : issue.status === "in_progress"
+                                                        ? "bg-amber-500/10 text-amber-600 ring-amber-500/20"
+                                                        : "bg-blue-500/10 text-blue-600 ring-blue-500/20"
                                                     }`}
                                             >
                                                 {issue.status.replace("_", " ")}
@@ -126,6 +137,12 @@ function IssuesDashboard() {
                     )}
                 </div>
             </div>
+
+            <IssueDetailsDialog
+                issue={selectedIssue}
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+            />
         </div>
     );
 }
