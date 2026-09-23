@@ -2,11 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Copy } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useState } from "react";
 import { IssueDetailsDialog } from "@/components/IssueDetailsDialog";
 import { Database } from "@/integrations/supabase/types";
+import { SecretaryDashboard } from "@/features/dashboard/SecretaryDashboard";
 
 type Issue = Database["public"]["Tables"]["issues"]["Row"];
 
@@ -15,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/issues")({
 });
 
 function IssuesDashboard() {
-    const { user, role, loading: authLoading } = useAuth();
+    const { user, role, profile, loading: authLoading } = useAuth();
     const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -42,12 +44,31 @@ function IssuesDashboard() {
         enabled: !!user && !!role,
     });
 
+    const { data: society } = useQuery({
+        queryKey: ["society", (profile as any)?.society_id],
+        queryFn: async () => {
+            if (!(profile as any)?.society_id) return null;
+            const { data, error } = await (supabase as any)
+                .from("societies")
+                .select("name, invite_code")
+                .eq("id", (profile as any).society_id)
+                .single();
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!(profile as any)?.society_id,
+    });
+
     if (authLoading || isLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <Loader2 className="size-8 animate-spin text-brand" />
             </div>
         );
+    }
+
+    if (role === "secretary") {
+        return <SecretaryDashboard />;
     }
 
     return (
@@ -71,16 +92,49 @@ function IssuesDashboard() {
                                 : "Track the real-time status of the issues you've reported."}
                         </p>
                     </div>
-                    {role === "resident" && (
-                        <Link
-                            to="/report"
-                            className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-brand/20 transition-all hover:bg-brand/90 hover:-translate-y-0.5"
+                    <div className="flex items-center gap-3">
+                        {role === "resident" && (
+                            <Link
+                                to="/report"
+                                className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-brand/20 transition-all hover:bg-brand/90 hover:-translate-y-0.5"
+                            >
+                                <Plus className="size-4" />
+                                Report Issue
+                            </Link>
+                        )}
+                        <button
+                            onClick={async () => {
+                                await supabase.auth.signOut();
+                                window.location.href = "/";
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl border border-ink/10 bg-background/50 backdrop-blur-md px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-ink/5 hover:text-ink shadow-sm"
                         >
-                            <Plus className="size-4" />
-                            Report Issue
-                        </Link>
-                    )}
+                            Log Out
+                        </button>
+                    </div>
                 </div>
+
+                {role === "secretary" && society && (
+                    <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-accent/20 bg-accent/5 px-5 py-4">
+                        <div>
+                            <h3 className="font-semibold text-accent">Society Invite Code</h3>
+                            <p className="text-sm text-muted-foreground mt-1">Share this code with new residents so they can uniquely report to {society.name}.</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <code className="rounded border border-border/50 bg-background/50 backdrop-blur-md px-4 py-2 font-mono text-lg font-bold tracking-widest text-ink shadow-sm">{society.invite_code}</code>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(society.invite_code);
+                                    toast.success("Invite code copied to clipboard!");
+                                }}
+                                className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-background transition hover:bg-accent/90 shadow-lg shadow-accent/20"
+                            >
+                                <Copy className="size-4" />
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <div className="mt-8">
                     {!issues || issues.length === 0 ? (
