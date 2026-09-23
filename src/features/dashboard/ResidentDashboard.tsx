@@ -314,7 +314,10 @@ function ReportView({ user, profile, onComplete }: { user: any, profile: any, on
                 const fileExt = photo.name.split('.').pop();
                 const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
                 const { error: uploadError } = await supabase.storage.from('issue_evidence').upload(fileName, photo);
-                if (uploadError) throw new Error("Failed to upload photo evidence.");
+                if (uploadError) {
+                    console.error("Storage Error Details:", uploadError);
+                    throw new Error("Upload blocked: " + uploadError.message);
+                }
                 photoUrl = supabase.storage.from('issue_evidence').getPublicUrl(fileName).data.publicUrl;
             }
 
