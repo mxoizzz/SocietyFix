@@ -167,8 +167,95 @@ function IssueDetail({ issue, open, onOpenChange, onSave }: { issue: Issue | nul
   );
 }
 
-function Placeholder({ view }: { view: "Residents" | "Settings" }) {
-  return <section className="grid min-h-[60vh] place-items-center border-y border-border text-center"><div><p className="dashboard-kicker">{view}</p><h2 className="mt-4 font-display text-4xl text-ink">This workspace is being prepared.</h2><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">The {view.toLowerCase()} area will appear here when it is ready for the committee.</p></div></section>;
+function ResidentsView() {
+  const [residents, setResidents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (supabase as any).rpc('get_society_residents').then(({ data, error }: any) => {
+      if (data) setResidents(data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div className="space-y-5"><Skeleton className="h-64 rounded-xl" /></div>;
+
+  return (
+    <section className="animate-in fade-in zoom-in-95 duration-500">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4"><div className="min-w-0"><p className="dashboard-kicker">Society Members</p><h2 className="mt-2 font-display text-3xl text-ink">Registered Residents</h2></div><p className="text-xs text-muted-foreground">{residents.length} total members</p></div>
+      <div className="mt-6 overflow-hidden border border-border bg-card shadow-sm rounded-xl">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-muted/60 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground border-b border-border">
+            <tr><th className="px-6 py-4">Full Name</th><th className="px-6 py-4">Flat / Block</th><th className="px-6 py-4 text-right">Joined Date</th></tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {residents.map((r, i) => (
+              <tr key={i} className="transition-colors hover:bg-muted/30">
+                <td className="px-6 py-5 font-semibold text-ink flex items-center gap-3">
+                  <span className="h-8 w-8 rounded-full bg-accent/10 text-accent flex items-center justify-center font-bold text-xs">{r.name.charAt(0)}</span>
+                  {r.name}
+                </td>
+                <td className="px-6 py-5 text-muted-foreground font-medium">{r.flat_number || "Awaiting Update"}</td>
+                <td className="px-6 py-5 text-right text-muted-foreground text-xs">{new Date(r.joined_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
+            {residents.length === 0 && (
+              <tr><td colSpan={3} className="px-6 py-16 text-center text-muted-foreground border-dashed border-2 rounded-xl">No residents have joined your society yet.<br /><span className="text-xs mt-2 block opacity-70">Share your invite code to get started.</span></td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function SettingsView({ society, onUpdate }: { society: any, onUpdate: (s: any) => void }) {
+  const [name, setName] = useState(society?.name || "");
+  const [saving, setSaving] = useState(false);
+
+  const saveSettings = async () => {
+    setSaving(true);
+    const { data, error } = await (supabase as any).from('societies').update({ name }).eq('id', society.id).select().single();
+    if (data) {
+      onUpdate(data);
+      toast.success("Society settings updated!");
+    } else {
+      toast.error("Failed to update Settings.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <section className="max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <p className="dashboard-kicker">Administration</p>
+      <h2 className="mt-2 font-display text-3xl text-ink">Society Settings</h2>
+
+      <div className="mt-8 space-y-6">
+        <div className="p-6 md:p-8 rounded-2xl border border-border bg-card shadow-sm space-y-6">
+          <div>
+            <label className="block text-sm font-semibold text-ink">Society Name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-2.5 w-full rounded-xl border border-border bg-background px-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 text-ink ring-offset-0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-ink">Global Invite Code</label>
+            <div className="mt-2.5 flex items-center gap-4">
+              <code className="rounded-lg border border-border/50 bg-background/50 backdrop-blur px-5 py-3 font-mono text-lg font-bold tracking-[0.2em] text-ink shadow-inner">{society?.invite_code}</code>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-[200px]">This code is locked. Distribute it strictly to verified building occupants.</p>
+            </div>
+          </div>
+          <div className="pt-6 mt-6 border-t border-border flex justify-end">
+            <Button onClick={saveSettings} disabled={saving || name === society?.name} className="rounded-xl px-6 bg-accent text-background hover:bg-accent/90 transition-all font-semibold">
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function SecretaryDashboard() {
@@ -195,34 +282,44 @@ export function SecretaryDashboard() {
 
     // Fetch Society Details
     if ((profile as any).society_id) {
-      (supabase as any).from("societies").select("*").eq("id", (profile as any).society_id).single().then(({ data }) => setSociety(data));
+      (supabase as any).from("societies").select("*").eq("id", (profile as any).society_id).single().then(({ data }: any) => setSociety(data));
     }
 
     // Fetch REAL Issues
     const fetchIssues = async () => {
-      const { data, error } = await (supabase as any)
-        .from("issues")
-        .select("*, issue_status_events(*), issue_notes(*), issue_upvotes(*)")
-        .order("created_at", { ascending: false });
+      try {
+        const { data, error } = await (supabase as any)
+          .from("issues")
+          .select("*, issue_status_events(*), issue_notes(*), issue_upvotes(*)")
+          .order("created_at", { ascending: false });
 
-      if (data) {
-        const mapped: Issue[] = data.map((d: any) => ({
-          id: d.id,
-          category: d.category.charAt(0).toUpperCase() + d.category.slice(1),
-          title: d.title,
-          description: d.description,
-          location: d.flat_number || "Unknown",
-          reporter: d.reporter_name || "Resident",
-          status: d.status === "in_progress" ? "In Progress" : d.status === "resolved" ? "Resolved" : "Reported",
-          reportedAt: d.created_at,
-          updatedAt: d.updated_at,
-          upvotes: d.issue_upvotes?.length || 0,
-          timeline: (d.issue_status_events || []).map((e: any) => ({ label: e.status, at: e.created_at })),
-          notes: (d.issue_notes || []).map((n: any) => ({ id: n.id, author: n.author, text: n.text, at: n.created_at }))
-        }));
-        setIssues(mapped);
+        if (error) {
+          console.error("Dashboard Fetch Error:", error);
+          toast.error("Failed to load society issues.");
+        }
+
+        if (data) {
+          const mapped: Issue[] = data.map((d: any) => ({
+            id: d.id,
+            category: d.category.charAt(0).toUpperCase() + d.category.slice(1),
+            title: d.title,
+            description: d.description,
+            location: d.flat_number || "Unknown",
+            reporter: d.reporter_name || "Resident",
+            status: d.status === "in_progress" ? "In Progress" : d.status === "resolved" ? "Resolved" : "Reported",
+            reportedAt: d.created_at,
+            updatedAt: d.updated_at,
+            upvotes: d.issue_upvotes?.length || 0,
+            timeline: (d.issue_status_events || []).map((e: any) => ({ label: e.status, at: e.created_at })),
+            notes: (d.issue_notes || []).map((n: any) => ({ id: n.id, author: n.author, text: n.text, at: n.created_at }))
+          }));
+          setIssues(mapped);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchIssues();
@@ -319,7 +416,7 @@ export function SecretaryDashboard() {
         <main className="px-4 py-8 sm:px-7 sm:py-8 lg:px-10 xl:px-12">
           <div className="mx-auto max-w-[92rem]">
             <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4"><div className="min-w-0"><p className="dashboard-kicker">Secretary console</p><h1 className="mt-2 truncate font-display text-4xl sm:text-5xl text-ink">{active}</h1></div>{active === "Overview" || active === "All Issues" ? <p className="hidden text-sm font-medium text-muted-foreground sm:block">{issues.filter((issue) => issue.status !== "Resolved").length} active cases</p> : null}</div>
-            {active === "Residents" || active === "Settings" ? <Placeholder view={active} /> : loading ? <div className="space-y-5"><div className="grid gap-px sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-36 rounded-xl" />)}</div><Skeleton className="h-40 rounded-xl mt-8" /><Skeleton className="h-96 rounded-xl mt-8" /></div> : <><Summary issues={issues} /><section className="mt-12" aria-labelledby="issues-title"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4"><div className="min-w-0"><p className="dashboard-kicker">Issue register</p><h2 id="issues-title" className="mt-2 font-display text-3xl text-ink">{active === "Overview" ? "Recent and active issues" : "All society issues"}</h2></div><p className="text-xs text-muted-foreground">{filtered.length} shown</p></div><Filters query={query} setQuery={setQuery} status={status} setStatus={setStatus} category={category} setCategory={setCategory} sort={sort} setSort={setSort} /><div className="issue-order-transition"><IssueList issues={active === "Overview" ? filtered.slice(0, 12) : filtered} sort={sort} setSort={setSort} onSelect={(issue) => setSelectedId(issue.id)} /></div></section></>}
+            {active === "Residents" ? <ResidentsView /> : active === "Settings" ? <SettingsView society={society} onUpdate={setSociety} /> : loading ? <div className="space-y-5"><div className="grid gap-px sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-36 rounded-xl" />)}</div><Skeleton className="h-40 rounded-xl mt-8" /><Skeleton className="h-96 rounded-xl mt-8" /></div> : <><Summary issues={issues} /><section className="mt-12" aria-labelledby="issues-title"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4"><div className="min-w-0"><p className="dashboard-kicker">Issue register</p><h2 id="issues-title" className="mt-2 font-display text-3xl text-ink">{active === "Overview" ? "Recent and active issues" : "All society issues"}</h2></div><p className="text-xs text-muted-foreground">{filtered.length} shown</p></div><Filters query={query} setQuery={setQuery} status={status} setStatus={setStatus} category={category} setCategory={setCategory} sort={sort} setSort={setSort} /><div className="issue-order-transition"><IssueList issues={active === "Overview" ? filtered.slice(0, 12) : filtered} sort={sort} setSort={setSort} onSelect={(issue) => setSelectedId(issue.id)} /></div></section></>}
           </div>
         </main>
       </div>
