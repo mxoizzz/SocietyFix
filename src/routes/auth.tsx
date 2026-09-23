@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { ChevronLeft } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -126,6 +127,9 @@ function AuthPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-5 py-12 text-ink font-sans">
+      <a href="/" className="fixed top-6 left-6 md:top-10 md:left-10 z-50 flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-ink transition-colors">
+        <ChevronLeft className="size-4" /> Go back
+      </a>
 
       {/* Aesthetic Background Orbs */}
       <div className="pointer-events-none absolute inset-0 z-0">
