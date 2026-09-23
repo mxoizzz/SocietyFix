@@ -1,135 +1,116 @@
 # Product Requirements Document (PRD)
-## SocietyFix — Society Issue Reporting & Resolution Platform
+## SocietyFix — Multi-Tenant Community Management Platform
 
-**Version:** 1.0 (Prototype/MVP)
+**Version:** 2.0 (SaaS Multi-Tenant Pivot)
 **Owner:** [Your Name]
-**Status:** Draft for prototype build
+**Status:** Approved for Development
 
 ---
 
 ## 1. Purpose
-SocietyFix lets residents of a housing society report common-area issues (electrical, plumbing, cleanliness, security, etc.) and track their resolution in real time, while giving the society secretary a single dashboard to manage and resolve all reported issues.
+SocietyFix is a scalable, multi-tenant SaaS platform that empowers housing societies to digitally manage common-area issues. It centralizes reports (electrical, plumbing, cleanliness, security), introduces democratic prioritization through resident upvoting, and gives the society secretary a powerful dashboard to resolve problems transparently.
 
 ## 2. Problem Statement
-Residents currently report issues through unstructured channels (calls, WhatsApp groups), leading to lost complaints, repeated follow-ups, and no visibility into resolution status. Secretaries lack a centralized way to track and prioritize issues.
+Residents currently report issues through chaotic group chats, leading to lost complaints, redundant reporting, and zero visibility on progress. Secretaries are overwhelmed with repetitive complaints and struggle to identify which issues impact the most residents, making prioritization difficult.
 
 ## 3. Goals & Success Metrics
 
 | Goal | Metric |
 |---|---|
-| Reduce time to report an issue | < 60 seconds per report |
-| Increase transparency | 100% of issues show a live status visible to the reporter |
-| Reduce follow-up load on secretary | Reduction in repeat "any update?" queries (measured via test feedback) |
-| Improve resolution tracking | 0 issues lost/untracked in the system |
+| Streamlined Onboarding | Secretaries can register a society and generate an invite code in < 2 mins |
+| Reduce Redundant Complaints | 80% adoption of the "Upvote" feature instead of duplicate reporting |
+| Increase Transparency | 100% of issues show a live status and history visible to the society |
+| Improve Prioritization | Secretaries can sort dashboards by "Most Upvoted" to target critical issues |
 
 ## 4. Users & Roles
 
 | Role | Description | Key Actions |
 |---|---|---|
-| **Resident** | Any flat owner/tenant | Report issue, view own issues, view status/timeline |
-| **Secretary** (Admin) | Society committee member | View all issues, filter/sort, update status, add notes |
-
-*(v1 has no separate "maintenance staff" role — secretary handles all status updates. Can be added later.)*
+| **Secretary** (Admin) | Society committee member / Creator | Registers Society, generates Invite, Views all issues, Upgrades status, adds notes, sorts by priority. |
+| **Resident** | Flat owner/tenant | Registers using Society Invite Code, Reports issues, Upvotes existing issues, Views society feed. |
 
 ## 5. Scope
 
-### 5.1 In Scope (MVP)
-- Resident login (simple, can be mocked/dummy auth for prototype)
-- Report an issue: category, title, description, optional photo upload
-- Auto-generated tracking ID per issue
-- Resident's personal issue list with live status
-- Secretary dashboard: view all issues, filter by status/category
-- Secretary can update issue status and add a resolution note
-- Status flow: **Reported → In Progress → Resolved**
-- Real-time or near-real-time status sync between secretary update and resident view
+### 5.1 In Scope (Phase 1 & 2)
+- **Multi-Tenant Onboarding:** 
+  - Secretary flow: Register → Name Society → Generate Unique Invite Code.
+  - Resident flow: Register → Input Invite Code → Access Isolated Society Space.
+- **Live Society Feed:** A transparent dashboard showing all problems occurring in the specific society.
+- **Reporting System:** Report an issue with category, title, description, and location.
+- **Democratic Upvoting:** Residents can upvote an issue to signal their agreement/impact, automatically bumping its priority for the Secretary.
+- **Resolution Tracking:** Status flow (**Reported → In Progress → Resolved**), visible to the whole society.
+- **Secretary Controls:** Secretary can update statuses and append official notes/timeline events to issues.
 
-### 5.2 Out of Scope (v1)
-- Government/municipal authority integration
-- Push notifications / SMS / email alerts
-- Payment or billing modules
-- Anonymous reporting
-- Multi-society / multi-tenant support
-- Native mobile app (web-responsive only for now)
+### 5.2 Out of Scope (For Now)
+- Vendor/Maintenance Staff direct platform access.
+- Payment, billing, or maintenance fee collection.
+- Multi-building complex grouping (currently 1 code = 1 isolated society).
+- Direct SMS / Email push notifications (relying on live feed checking).
 
 ## 6. User Stories
 
-1. **As a resident**, I want to report an issue with a category and description, so that the right person can act on it.
-2. **As a resident**, I want to see the current status of my reported issue, so that I don't have to call anyone to follow up.
-3. **As a resident**, I want to see a history/timeline of status changes, so that I understand what's been done.
-4. **As a secretary**, I want to see all reported issues in one dashboard, so that nothing gets missed.
-5. **As a secretary**, I want to filter issues by status or category, so that I can prioritize urgent ones.
-6. **As a secretary**, I want to update an issue's status and add a note, so that the resident is informed of progress.
+1. **As a Secretary**, I want to register my building and receive an invite code, so that I can securely onboard my residents.
+2. **As a Resident**, I want to join my society using a code, so that I only see issues relevant to my building.
+3. **As a Resident**, I want to upvote an existing issue (e.g., "Lift is broken") instead of creating a new one, so the administration knows how many people are affected.
+4. **As a Secretary**, I want to sort the issue feed by upvotes, so I can tackle the highest priority problems first.
+5. **As a Resident**, I want to see a history/timeline of status changes, so I understand the progress without messaging the secretary.
+6. **As a Secretary**, I want to update an issue's status and add an official note, keeping the entire society informed instantly.
 
 ## 7. Functional Requirements
 
-### 7.1 Authentication
-- Simple login screen with role selection: Resident / Secretary.
-- For prototype purposes: dummy/mock login (no OTP/email verification needed unless required).
+### 7.1 Authentication & Onboarding
+- **Landing Page:** Ultra-premium aesthetic showcasing two distinct CTAs: "Register Society" and "Enter Your Society".
+- **Secretary Registration:** Creates a `society` record. System generates a unique `invite_code`.
+- **Resident Registration:** Requires a valid `invite_code` to link the user to the correct `society_id`.
 
-### 7.2 Report Issue (Resident)
-- Fields: Category (dropdown: Electrical, Plumbing, Cleanliness, Security, Other), Title, Description, Photo (optional), Location/Block-Flat number.
-- On submit: generate unique Issue ID, set status = "Reported", timestamp = now.
+### 7.2 The Society Feed (Dashboard)
+- Displays all issues restricted strictly by the user's `society_id`.
+- Showcases the Upvote count prominently on the card.
+- Allows filtering by Status (Reported vs Resolved).
+- **Secretary specific:** Can sort by "Most Upvotes" to determine priority.
 
-### 7.3 My Issues (Resident)
-- List view of all issues reported by the logged-in resident.
-- Each item shows: title, category, status badge, date reported.
-- Click into an issue → detail view with full timeline (Reported → In Progress → Resolved) and secretary's notes.
+### 7.3 Upvoting Logic
+- A single resident account can only upvote an issue once.
+- Upvoting an issue acts as a "Me Too", preventing timeline clutter and validating the severity of a problem.
 
-### 7.4 Secretary Dashboard
-- Table or Kanban view of all issues across all residents.
-- Columns/filters: Status, Category, Date, Flat/Block.
-- Click into an issue → can change status (dropdown) and add a text note.
-- Status change should reflect on the resident's view immediately (or on next refresh, for MVP).
-
-### 7.5 Notifications (Optional/Stretch)
-- In-app banner/badge when an issue status changes (no external push/SMS needed for MVP).
+### 7.4 Issue Details & Status Flow
+- Clicking an issue opens a detailed timeline overlay.
+- Lists the original description, all status changes, and any notes added by the Secretary.
+- Secretaries see operational controls (Change Status Dropdown, Add Note Textarea).
 
 ## 8. Non-Functional Requirements
-- **Usability:** A first-time user should complete "report an issue" without instructions.
-- **Performance:** Dashboard should load under 2 seconds for up to ~100 issues (prototype scale).
-- **Responsiveness:** Should work on both mobile and desktop browser widths.
-- **Data integrity:** No issue should be editable/deletable by residents once submitted (only secretary can update status).
+- **Aesthetics & UI:** Must feel like a high-end enterprise SaaS. Strict elimination of generic emojis/icons. High reliance on glassmorphism, depth, premium typography, and subtle micro-animations.
+- **Data Isolation:** Absolutely zero cross-bleed of data between societies. Must be enforced at the database level via Row Level Security (RLS).
+- **Responsive:** Fluid interactions across mobile and desktop.
 
-## 9. Data Model (Simplified)
+## 9. Data Model (Updated for Multi-Tenant)
 
-**User**
-- id, name, role (resident/secretary), flat_number
+**Societies**
+- `id`, `name`, `invite_code`, `created_at`
 
-**Issue**
-- id (tracking ID)
-- reported_by (user id)
-- category (enum: Electrical, Plumbing, Cleanliness, Security, Other)
-- title
-- description
-- photo_url (optional)
-- status (enum: Reported, In Progress, Resolved)
-- created_at
-- updated_at
-- notes: [ { text, author, timestamp } ]
+**Profiles**
+- `id`, `society_id` (FK), `name`, `flat_number`
 
-## 10. Suggested Tech Stack
+**Issues**
+- `id`, `society_id` (FK), `reported_by`, `category`, `title`, `description`, `status`, `created_at`, `updated_at`
 
-| Layer | Option |
+**Issue Upvotes**
+- `issue_id`, `user_id` (Composite Primary Key to prevent double voting)
+
+**Issue Notes / Status Events**
+- Track the timeline of updates per issue.
+
+## 10. Tech Stack Execution
+- **Frontend:** React 19, Vite, TanStack Router.
+- **Styling:** Tailwind CSS v4, Shadcn UI (Customized for premium aesthetics).
+- **Backend & Database:** Supabase (PostgreSQL).
+- **Security:** Supabase Row Level Security (RLS) enforcing `society_id` tenancy checks.
+
+## 11. Next Development Milestones
+| Phase | Focus |
 |---|---|
-| Frontend | React (or plain HTML/CSS/JS for a fast prototype) |
-| Backend | Node.js + Express, or Firebase Functions |
-| Database | Firebase Firestore (built-in real-time sync) or MongoDB |
-| Auth | Firebase Auth (or mock auth for prototype) |
-| Hosting | Vercel/Netlify (frontend) + Firebase/Render (backend) |
-
-*Firebase is recommended for the prototype since it gives real-time listeners "for free," which directly supports the "live real-time status" requirement without building custom WebSocket infrastructure.*
-
-## 11. Milestones (Suggested)
-
-| Milestone | Deliverable |
-|---|---|
-| M1 | Wireframes / clickable low-fi prototype (Figma or HTML) |
-| M2 | Resident flow — report + view issues (mock data) |
-| M3 | Secretary dashboard — view + update status |
-| M4 | Real-time sync between the two views |
-| M5 | Usability testing with residents/secretary + iteration |
-
-## 12. Risks & Open Questions
-- How is a resident's "flat number/identity" verified without a full auth system? (For prototype: manual dummy accounts are fine.)
-- Should other residents see all issues (community transparency) or only their own? *(Assumption: only own issues in v1, community-wide visibility is a "Could Have.")*
-- What happens to an issue if it's marked "Resolved" but the resident disagrees? *(Future: reopen/dispute feature.)*
+| Stage 1 | Migrate DB Schema to Multi-Tenant (Societies, Upvotes, RLS). |
+| Stage 2 | Redesign Landing Page (Aesthetics + Dual Routes). |
+| Stage 3 | Build the Secretary "Register Society" Auth Flow. |
+| Stage 4 | Build the Resident "Join via Code" Auth Flow. |
+| Stage 5 | Integrate Upvoting and Priority sorting into the Live Feed. |

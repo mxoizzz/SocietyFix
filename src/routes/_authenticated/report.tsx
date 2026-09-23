@@ -45,9 +45,10 @@ function ReportPage() {
         photoPath = path;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("issues")
         .insert({
+          society_id: (profile as any)?.society_id,
           reported_by: user.id,
           reporter_name: profile?.name ?? "Resident",
           flat_number: flat,
@@ -61,7 +62,7 @@ function ReportPage() {
       if (error) throw error;
 
       toast.success(`Reported — your tracking ID is ${data.ref_code}`);
-      navigate({ to: "/issues/$id", params: { id: data.id } });
+      navigate({ to: "/issues" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not submit the issue");
     } finally {

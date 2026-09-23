@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type Role = "resident" | "secretary";
 
-export type Profile = { id: string; name: string; flat_number: string };
+export type Profile = { id: string; name: string; flat_number: string; society_id: string };
 
 type AuthContextValue = {
   user: User | null;
@@ -21,7 +21,7 @@ const AuthContext = createContext<AuthContextValue>({
   profile: null,
   role: null,
   loading: true,
-  refresh: async () => {},
+  refresh: async () => { },
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: existing } = await supabase
       .from("profiles")
-      .select("id, name, flat_number")
+      .select("id, name, flat_number, society_id")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -54,8 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: user.id,
           name: meta["name"] ?? user.email?.split("@")[0] ?? "Resident",
           flat_number: meta["flat_number"] ?? "",
-        })
-        .select("id, name, flat_number")
+          society_id: meta["society_id"],
+        } as any)
+        .select("id, name, flat_number, society_id")
         .maybeSingle();
       resolved = (inserted as Profile | null) ?? null;
     }
