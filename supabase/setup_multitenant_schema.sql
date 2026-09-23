@@ -1,5 +1,14 @@
 -- SocietyFix Multi-Tenant Schema
 
+-- Drop all existing legacy tables to cleanly migrate to the Multi-Tenant architecture
+DROP TABLE IF EXISTS public.issue_status_events CASCADE;
+DROP TABLE IF EXISTS public.issue_notes CASCADE;
+DROP TABLE IF EXISTS public.issue_upvotes CASCADE;
+DROP TABLE IF EXISTS public.issues CASCADE;
+DROP TABLE IF EXISTS public.user_roles CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+DROP TABLE IF EXISTS public.societies CASCADE;
+
 -- Drop existing types if recreating
 DROP TYPE IF EXISTS public.app_role CASCADE;
 DROP TYPE IF EXISTS public.issue_status CASCADE;
