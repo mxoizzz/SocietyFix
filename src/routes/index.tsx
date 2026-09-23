@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/")({
@@ -62,8 +62,8 @@ function Index() {
             <a className="nav-link" href="#contact">Contact</a>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <a className="button-secondary hidden sm:inline-flex" href="#final-cta">Join Your Society</a>
-            <a className="button-primary text-xs sm:text-sm" href="#final-cta">Register Your Society</a>
+            <Link className="button-secondary hidden sm:inline-flex" to="/auth">Join Your Society</Link>
+            <Link className="button-primary text-xs sm:text-sm" to="/auth">Register Your Society</Link>
           </div>
         </nav>
       </header>
@@ -80,7 +80,7 @@ function Index() {
                 SocietyFix gives residents and committees one calm, transparent place to report common-area problems and follow every resolution.
               </p>
               <div className="hero-reveal hero-delay-4 mt-10 flex flex-wrap gap-3">
-                <a className="button-primary" href="#final-cta">Register Your Society</a>
+                <Link className="button-primary" to="/auth">Register Your Society</Link>
                 <a className="button-secondary" href="#how-it-works">See How It Works</a>
               </div>
             </div>
@@ -177,7 +177,7 @@ function Index() {
                 <p className="secretary-point"><span>02</span>Priority shaped by residents</p>
                 <p className="secretary-point"><span>03</span>Fewer repetitive follow-up calls</p>
               </div>
-              <a className="button-primary" href="#final-cta">Register Your Society</a>
+              <Link className="button-primary" to="/auth">Register Your Society</Link>
             </div>
           </div>
         </section>
@@ -195,8 +195,8 @@ function Index() {
             <h2 className="mx-auto max-w-4xl font-display text-[clamp(3rem,6vw,6.25rem)] leading-[.96]">Make every common concern a shared responsibility.</h2>
             <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground">Register as a committee, or join the society your committee has already created.</p>
             <div className="mt-10 flex flex-wrap justify-center gap-3">
-              <a className="button-primary" href="#top">Register Your Society</a>
-              <a className="button-secondary" href="#top">Join Your Society</a>
+              <Link className="button-primary" to="/auth">Register Your Society</Link>
+              <Link className="button-secondary" to="/auth">Join Your Society</Link>
             </div>
           </div>
         </section>
