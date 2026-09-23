@@ -115,8 +115,8 @@ function IssueList({ issues, sort, setSort, onSelect }: { issues: Issue[]; sort:
   if (!issues.length) return <div className="border-b border-border py-20 text-center"><p className="font-display text-3xl text-ink/40">Nothing needs attention here.</p><p className="mt-3 text-sm text-muted-foreground">Try a broader filter or a different search.</p></div>;
   return (
     <div className="mt-2">
-      <div className="hidden overflow-hidden border border-border bg-card shadow-sm md:block">
-        <table className="w-full border-collapse text-left text-xs">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+        <table className="w-full border-collapse text-left text-xs min-w-[800px]">
           <thead className="bg-muted/60 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground border-b border-border">
             <tr><th className="px-4 py-3">Issue ID</th><th className="px-4 py-3">Title</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Flat / Block</th><th className="px-4 py-3"><button type="button" onClick={() => setSort("upvotes")} className={`cursor-pointer ${sort === "upvotes" ? "text-accent font-bold" : "hover:text-ink"}`}>Upvotes {sort === "upvotes" ? "↓" : ""}</button></th><th className="px-4 py-3">Status</th><th className="px-4 py-3"><button type="button" onClick={() => setSort("reported")} className={`cursor-pointer ${sort === "reported" ? "text-accent font-bold" : "hover:text-ink"}`}>Reported {sort === "reported" ? "↓" : ""}</button></th><th className="px-4 py-3">Updated</th></tr>
           </thead>
